@@ -5,42 +5,19 @@ class Logistic_Regression:
     Implements a Logistic Regression classifier for binary and multiclass
     classification using batch gradient descent.
     """
-    def __init__(self, X_train: np.ndarray, y_train: np.ndarray, learning_rate: float, epoch: int):
+    def __init__(self, learning_rate: float, epoch: int):
         """
         Initializes the Logistic Regression classifier.
         
         Args:
-            X_train: Training features.
-            y_train: Training labels.
             learning_rate: Controls the magnitude of the weight and bias updates.
             epoch: Number of training iterations.
         """
-        self.X_train = X_train
-        self.y_train = y_train
+        self.X_train = None
+        self.y_train = None
+        self.num_of_classes = None
         self.learning_rate = learning_rate
         self.epoch = epoch
-        self.num_of_classes = len(np.unique(self.y_train))
-
-        # Initializes weights and bias based on the number of classes.
-        if (self.num_of_classes > 2):
-            self.weights = np.zeros((self.num_of_classes, len(X_train[0])))
-            self.bias = np.zeros(self.num_of_classes)
-        else:
-            self.weights = np.zeros(len(X_train[0]))
-            self.bias = 0
-
-
-    def logistic_regression(self) -> None:
-        """
-        Trains the Logistic Regression model using batch gradient descent.
-        Selects binary or multinomial logistic regression based on the number
-        of classes.
-        """
-        if self.num_of_classes > 2:
-            self._multinomial_logistic_regression()
-
-        else:
-            self._binary_logistic_regression()
 
      
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -61,6 +38,32 @@ class Logistic_Regression:
             z = np.dot(X, self.weights) + self.bias
             y_pred = self._sigmoid(z)
             return np.array([1 if i > 0.5 else 0 for i in y_pred])
+
+
+    def fit(self, X_train: np.ndarray, y_train: np.ndarray, ) -> None:
+        """
+        Trains the Logistic Regression model using batch gradient descent.
+        Selects binary or multinomial logistic regression based on the number
+        of classes.
+
+        Args:
+            X_train: Training features.
+            y_train: Training labels.
+        """
+        self.X_train = X_train
+        self.y_train = y_train
+
+        self.num_of_classes = len(np.unique(self.y_train))
+
+        # Initializes weights and bias based on the number of classes.
+        if (self.num_of_classes > 2):
+            self.weights = np.zeros((self.num_of_classes, len(X_train[0])))
+            self.bias = np.zeros(self.num_of_classes)
+            self._multinomial_logistic_regression()
+        else:
+            self.weights = np.zeros(len(X_train[0]))
+            self.bias = 0
+            self._binary_logistic_regression()
 
     
     def _multinomial_logistic_regression(self) -> None:
