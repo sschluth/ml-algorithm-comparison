@@ -24,7 +24,7 @@ def load_data(dataset: str, y_col:int, x_cols:list, header:int | None = None) ->
         y = y.replace(unique_y_values[i], i)
 
     X = df.iloc[:, x_cols].to_numpy()
-    y = y.to_numpy()
+    y = y.to_numpy(dtype=int)
 
     return X, y
 
@@ -57,79 +57,91 @@ def split_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np
     return X_train, y_train, X_test, y_test
 
 
-def min_max_scale(X_train: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+class CustomMinMaxScaler:
     """
-    Scales the training features using Min-Max Scaling.
-    
-    Args:
-        X_train: NumPy array containing the training features.
-    
-    Returns:
-        X_train_scaled: NumPy array containing the scaled training features.
-        x_min: Minimum value of the training features.
-        x_max: Maximum value of the training features.
+    Implements Min-Max feature scaling.
     """
-    x_min = X_train.min(axis=0)
-    x_max = X_train.max(axis=0)
+    def __init__(self):
+        """
+        Initializes the minimum and maximum scaling parameters
+        """
+        self.x_min = None
+        self.x_max = None
 
-    # Skip scaling if all features have zero range.
-    if np.all(x_min == x_max):
-        return X_train, x_min, x_max
-    
-    X_train_scaled = (X_train - x_min) / (x_max - x_min)
-    return X_train_scaled, x_min, x_max
-
-
-def z_scale(X_train: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Scales the training features using Standardization (z-score scaling).
-    
-    Args:
-        X_train: NumPy array containing the training features.
-    
-    Returns:
-        X_train_scaled: NumPy array containing the scaled training features.
-        mean: The mean of the training features.
-        std: The standard deviation of the training features.
-    """
-    mean = np.mean(X_train, axis=0)
-    std = np.std(X_train, axis=0)
-
-    # Skip scaling if all features have zero standard deviation.
-    if np.all(std == 0):        
-        return X_train, mean, std
-    
-    X_train_scaled = (X_train - mean) / std
-
-    return X_train_scaled, mean, std
-
-def transform(X_test: np.ndarray, scale_param1: np.ndarray, scale_param2: np.ndarray, is_min_max: bool) -> np.ndarray:
-    """
-    Transforms the testing features using the parameters of the training features
-    
-    Args:
-        X_test: NumPy array containing the testing features to be transformed
-        scale_param1: Minimum value or the mean of the training features, depending on scaling method.
-        scale_param2: Maximum value or the standard deviation of the training features, depending on scaling method.
-        is_min_max: If True, applies Min-Max scaling; otherwise, applies Z-score scaling.
-
-    Returns:
-        X_test_scaled: NumPy array of the transformed testing features.
-    """
-    if is_min_max:
-
-        # Skip transformation if the training features have zero range
-        if np.all(scale_param1 == scale_param2):
-            return X_test
+    def fit_transform(self, X_train: np.ndarray) -> np.ndarray:
+        """
+        Scales the training features using Min-Max Scaling.
         
-        X_test_scaled = (X_test - scale_param1) / (scale_param2 - scale_param1)
-
-    else:
-
-        # Skip transformation if the training features have zero standard deviation
-        if np.all(scale_param2 == 0):
-            return X_test
+        Args:
+            X_train: NumPy array containing the training features.
         
-        X_test_scaled = (X_test - scale_param1) / scale_param2
+        Returns:
+            NumPy array containing the scaled training features.
+        """
+        self.x_min = X_train.min(axis=0)
+        self.x_max = X_train.max(axis=0)
 
-    return X_test_scaled
+        if np.any(self.x_min == self.x_max):
+            raise ValueError("Cannot scale constant features.")
+
+        return (X_train - self.x_min) / (self.x_max - self.x_min)
+
+
+    def transform(self, X_test: np.ndarray) -> np.ndarray:
+        """
+        Transforms new data using the minimum and maximum values
+        learned from the training data.
+        
+        Args:
+            X_test: NumPy array containing the testing features to be transformed
+
+        Returns:
+            NumPy array of the transformed testing features.
+        """
+        return (X_test - self.x_min) / (self.x_max - self.x_min)
+
+
+
+class CustomStandardScaler:
+    """
+    Implements standardization using z-score scaling.
+    """
+    def __init__(self):
+        """
+        Initializes the mean and standard deviation scaling parameters
+        """
+        self.mean = None
+        self.std = None
+
+    def fit_transform(self, X_train: np.ndarray) -> np.ndarray:
+        """
+        Scales the training features using Standardization (z-score scaling).
+        
+        Args:
+            X_train: NumPy array containing the training features.
+        
+        Returns:
+           NumPy array containing the scaled training features.
+        """
+        self.mean = np.mean(X_train, axis=0)
+        self.std = np.std(X_train, axis=0)
+
+        if np.any(self.std == 0):
+            raise ValueError("Cannot scale constant features.")
+        
+        return (X_train - self.mean) / self.std
+
+
+    def transform(self, X_test: np.ndarray) -> np.ndarray:
+        """
+        Transforms new data using the mean and standard deviation values
+        learned from the training data.
+        
+        Args:
+            X_test: NumPy array containing the testing features to be transformed
+
+        Returns:
+            NumPy array of the transformed testing features.
+        """
+        return (X_test - self.mean) / self.std
