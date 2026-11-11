@@ -1,24 +1,17 @@
 import numpy as np
-from typing import Callable
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.model_selection import StratifiedKFold
 
-def accuracy(y: np.ndarray, y_pred: np.ndarray) -> float:
+
+def cross_validation(X_train: np.ndarray, y_train: np.ndarray, num_folds: int,
+                     algorithm: type, model_params: dict, scaler_class: type) -> dict:
     """
-    Calculates the accuracy of predicted labels.
-    
-    Args:
-        y: NumPy array containing the actual labels.
-        y_pred: NumPy array containing the predicted labels.
+    Evaluates a classification model using stratified K-fold cross-validation.
 
-    Returns:
-        The proportion of correctly predicted labels.
-    """
-    return np.sum(y == y_pred) / len(y)
-
-
-def cross_validation(X_train: np.ndarray, y_train: np.ndarray, num_folds: int, 
-                     algorithm: type, model_params: dict, scaler_class: type) -> list[float]:
-    """
-    Evaluates a classification model using K-fold cross-validation.
+    Assumptions:
+        - The number of folds is between 2 and the number of training samples.
+        - The feature and label arrays contain the same number of samples.
+        - Each class has at least num_folds samples.
 
     Args:
         X_train: NumPy array containing the training features.
@@ -29,38 +22,66 @@ def cross_validation(X_train: np.ndarray, y_train: np.ndarray, num_folds: int,
         scaler_class: Feature scaler class used to scale the data.
 
     Returns:
-        A list containing the accuracy of each fold, followed by the average accuracy.
+        A dictionary containing each metric's score for every fold and its average,
+        along with the combined confusion matrix across all folds.
     """
-    list_of_accuracies = []
-    total_accuracy = 0
+    metrics = {
+        "accuracy": [],
+        "precision": [],
+        "recall": [],
+        "f1": []
+    }
 
-    X_folds = np.array_split(X_train, num_folds)
-    y_folds = np.array_split(y_train, num_folds)
+    total_confusion_matrix = None
 
-    for index in range(num_folds):
+    skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=15)
 
-        X_validation_set = X_folds[index]
-        y_validation_set = y_folds[index]
+    # Generates stratified training and validation indices for each fold.
+    for train_index, validation_index in skf.split(X_train, y_train):
+        X_training_set = X_train[train_index]
+        y_training_set = y_train[train_index]
 
-        X_filtered_arrays = [arr for i, arr in enumerate(X_folds) if i != index]
-        X_training_set = np.concatenate(X_filtered_arrays)
+        X_validation_set = X_train[validation_index]
+        y_validation_set = y_train[validation_index]
 
         scaler = scaler_class()
-        X_training_set = scaler.fit_transform(X_training_set)
-        X_validation_set = scaler.transform(X_validation_set)
 
-        y_filtered_arrays = [arr for i, arr in enumerate(y_folds) if i != index]
-        y_training_set = np.concatenate(y_filtered_arrays)
+        # Fits the scaler using only the training fold to prevent data leakage.
+        X_training_set = scaler.fit_transform(X_training_set)
+
+        # Applies the training fold's scaling parameters to the validation fold.
+        X_validation_set = scaler.transform(X_validation_set)
 
         model = algorithm(**model_params)
         model.fit(X_training_set, y_training_set)
         y_pred = model.predict(X_validation_set)
 
-        fold_accuracy = accuracy(y_validation_set, y_pred)
-        list_of_accuracies.append(fold_accuracy)
-        total_accuracy += fold_accuracy
-    
-    # Calculate the average accuracy across all folds.
-    list_of_accuracies.append(total_accuracy / num_folds)
-    
-    return list_of_accuracies
+        # Calculates the evaluation metrics for the current fold.
+        metrics["accuracy"].append(
+            accuracy_score(y_validation_set, y_pred)
+        )
+        metrics["precision"].append(
+            precision_score(y_validation_set, y_pred, average="weighted", zero_division=0)
+        )
+        metrics["recall"].append(
+            recall_score(y_validation_set, y_pred, average="weighted", zero_division=0)
+        )
+        metrics["f1"].append(
+            f1_score(y_validation_set, y_pred, average="weighted", zero_division=0)
+        )
+
+        # Adds the current fold's confusion matrix to the combined matrix.
+        fold_confusion_matrix = confusion_matrix(y_validation_set, y_pred)
+
+        if total_confusion_matrix is None:
+            total_confusion_matrix = fold_confusion_matrix
+        else:
+            total_confusion_matrix += fold_confusion_matrix
+
+    # Calculates the average score for each metric across all folds.
+    for metric in metrics:
+        metrics[metric].append(np.mean(metrics[metric]))
+
+    metrics["confusion_matrix"] = total_confusion_matrix
+
+    return metrics

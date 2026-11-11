@@ -3,6 +3,9 @@ import numpy as np
 class KNN:
     """
     Implements the K-Nearest Neighbors (KNN) classification algorithm.
+
+    Assumptions:
+        - k is less than or equal to the number of training samples.
     
     Attributes:
         k: Number of nearest neighbors used to make a prediction.
@@ -31,6 +34,7 @@ class KNN:
             NumPy array of the predicted class labels for each point.
         """
         y_pred = np.empty(len(X), dtype=int)
+        # Sorts the training samples by their distance from the input point.
         euclidean_dist = np.zeros(len(self.X_train))
 
         for point in range(len(X)):
@@ -45,6 +49,7 @@ class KNN:
             for count in range(self.k): 
                 labels.append(self.y_train[distance_sorted[count]])
 
+            # Selects the most frequent label among the k nearest neighbors.
             predicted_label = np.bincount(labels).argmax()
             y_pred[point] = predicted_label
 

@@ -5,12 +5,18 @@ def load_data(dataset: str, y_col:int, x_cols:list, header:int | None = None) ->
     """
     Loads a dataset and separates its features (X) and labels (y).
 
+    Assumptions:
+        - The dataset is a properly formatted CSV file.
+        - The specified feature and label columns exist in the dataset.
+        - The dataset contains no missing or invalid values.
+        - The label column contains categorical values.
+    
     Args:
         dataset: Path to CSV file.
         y_col: Column index for the labels.
         x_cols: List of column indices for the features.
         header: Row index containing column names, or None if the dataset has no header
-    
+
     Returns:
         X: NumPy array containing the data points and their features
         y: NumPy array containing the corresponding labels
@@ -32,6 +38,10 @@ def load_data(dataset: str, y_col:int, x_cols:list, header:int | None = None) ->
 def split_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Splits into 80% training data and 20% testing data using a random split
+
+    Assumptions:
+        - X and y contain the same number of samples.
+        - The dataset contains at least two samples.
 
     Args:
         X: NumPy array of features to be split.
@@ -61,6 +71,10 @@ def split_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np
 class CustomMinMaxScaler:
     """
     Implements Min-Max feature scaling.
+
+    Assumptions:
+        - Input features are numerical.
+        - No features have a constant value across the training data.
     """
     def __init__(self):
         """
@@ -106,6 +120,10 @@ class CustomMinMaxScaler:
 class CustomStandardScaler:
     """
     Implements standardization using z-score scaling.
+
+    Assumptions:
+        - Input features are numerical.
+        - No features have a standard deviation of zero.
     """
     def __init__(self):
         """

@@ -4,8 +4,23 @@ class Logistic_Regression:
     """
     Implements a Logistic Regression classifier for binary and multiclass
     classification using batch gradient descent.
+
+    Assumptions:
+        - Training labels are encoded as consecutive integers starting at 0.
+        - Binary classification uses labels 0 and 1.
+        - Training data contains at least two unique classes.
+        - Input features contain no missing or invalid values.
+
+    Attributes:
+        X_train: NumPy array containing the training features.
+        y_train: NumPy array containing the training labels.
+        num_of_classes: Number of unique classes in the training data.
+        learning_rate: Step size used during gradient descent.
+        epoch: Number of training iterations.
+        weights: Model weights learned during training.
+        bias: Model bias learned during training.
     """
-    def __init__(self, learning_rate: float, epoch: int):
+    def __init__(self, learning_rate: float, epochs: int):
         """
         Initializes the Logistic Regression classifier.
         
@@ -13,16 +28,18 @@ class Logistic_Regression:
             learning_rate: Controls the magnitude of the weight and bias updates.
             epoch: Number of training iterations.
         """
+        self.learning_rate = learning_rate
+        self.epochs = epochs
         self.X_train = None
         self.y_train = None
         self.num_of_classes = None
-        self.learning_rate = learning_rate
-        self.epoch = epoch
+        self.weights = None
+        self.bias = None
 
      
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
-        Predicts the class label of the given input data.
+        Predicts the class labels of the given input data.
         
         Args:
             X: NumPy array containing the input features.
@@ -34,6 +51,7 @@ class Logistic_Regression:
             z = np.dot(X, self.weights.T) + self.bias
             y_pred = self._softmax(z)
             return np.argmax(y_pred, axis=-1)
+        
         else:   
             z = np.dot(X, self.weights) + self.bias
             y_pred = self._sigmoid(z)
@@ -60,6 +78,7 @@ class Logistic_Regression:
             self.weights = np.zeros((self.num_of_classes, len(X_train[0])))
             self.bias = np.zeros(self.num_of_classes)
             self._multinomial_logistic_regression()
+
         else:
             self.weights = np.zeros(len(X_train[0]))
             self.bias = 0
@@ -75,11 +94,14 @@ class Logistic_Regression:
         # Converts class labels into one-hot encoded vectors
         y_train_one_hot = np.eye(self.num_of_classes)[self.y_train]
         
-        for _ in range(self.epoch):
+        for _ in range(self.epochs):
             z = np.dot(self.X_train, self.weights.T) + self.bias
             y_pred = self._softmax(z)
+
+            # Calculates the gradients of the weights and bias using cross-entropy loss.
             derivative_weights = (1/len(y_train_one_hot)) * np.dot((y_pred - y_train_one_hot).T, self.X_train)
             derivative_bias = (1/len(y_train_one_hot)) * np.sum(y_pred - y_train_one_hot, axis=0)
+
             self.weights -= self.learning_rate * derivative_weights
             self.bias -= self.learning_rate * derivative_bias
 
@@ -89,11 +111,14 @@ class Logistic_Regression:
         Trains the binary Logistic Regression model using
         batch gradient descent.
         """
-        for _ in range(self.epoch):
+        for _ in range(self.epochs):
             z = np.dot(self.X_train, self.weights) + self.bias
             y_pred = self._sigmoid(z)
+
+            # Calculates the gradients of the weights and bias using binary cross-entropy loss.
             derivative_weights = (1/len(self.y_train)) * np.dot((y_pred - self.y_train), self.X_train)
             derivative_bias = (1/len(self.y_train)) * np.sum(y_pred - self.y_train)
+
             self.weights -= self.learning_rate * derivative_weights
             self.bias -= self.learning_rate * derivative_bias
 
@@ -119,5 +144,7 @@ class Logistic_Regression:
         Returns:
             NumPy array containing the normalized class probabilities.
         """
+
+        # Subtracts the maximum value to improve numerical stability.
         e_z = np.exp(z - np.max(z, axis=-1, keepdims=True))
         return e_z / np.sum(e_z, axis=-1, keepdims=True)
