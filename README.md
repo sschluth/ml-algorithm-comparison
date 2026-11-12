@@ -38,7 +38,7 @@ The following results represent performance on the held-out test sets.
 Comparison plots show custom and Scikit-learn performance across accuracy, precision, recall, and F1 score.
 
 Plots are available in the `plots/` directory.
-
+[View all plots](plots/)
 ## Algorithms
 
 The following algorithms were implemented from scratch using NumPy:
