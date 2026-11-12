@@ -2,7 +2,7 @@ import numpy as np
 
 class Perceptron:
     """
-    Implements a multiclass Perceptron
+    Implements a binary and multiclass Perceptron
 
     Assumptions:
         - Training data contains at least two unique classes.
@@ -15,6 +15,7 @@ class Perceptron:
         X_train: NumPy array containing the training features.
         y_train: NumPy array containing the training labels.
         weights: Model weights learned during training.
+        bias: Model bias learned during training.
         classes: NumPy array containing the unique class labels.
     """
     def __init__(self, learning_rate: float, epochs: int):
@@ -30,7 +31,9 @@ class Perceptron:
         self.X_train = None
         self.y_train = None
         self.weights = None
+        self.bias = None
         self.classes = None
+
 
 
     def predict(self, X: np.ndarray) -> int | np.ndarray:
@@ -48,7 +51,7 @@ class Perceptron:
             return self.classes[y_pred_index]
 
         else:
-            y_pred_indices = np.argmax(np.dot(self.weights, X.T), axis=0)
+            y_pred_indices = np.argmax(np.dot(self.weights, X.T) + self.bias[:, np.newaxis], axis=0)
             return self.classes[y_pred_indices]
 
         
@@ -64,8 +67,9 @@ class Perceptron:
         self.y_train = y_train
         self.classes = np.unique(y_train)
 
-        # Initializes a weight vector for each class.
+        # Initializes a weight and bias vector for each class.
         self.weights = np.zeros((len(self.classes), len(X_train[0])), dtype=float)
+        self.bias = np.zeros(len(self.classes), dtype=float)
 
         misclassified = True
         epoch = 0
@@ -97,7 +101,7 @@ class Perceptron:
         Returns:
             NumPy array containing the scores of the labels
         """
-        return np.dot(self.weights, x)
+        return np.dot(self.weights, x) + self.bias
 
 
     def _update(self, x: np.ndarray, y_true: int, y_pred: int) -> None:
@@ -112,7 +116,10 @@ class Perceptron:
         y_true_index = np.where(self.classes == y_true)[0][0]
         y_pred_index = np.where(self.classes == y_pred)[0][0]
 
-        # Increases the weights for the correct class and decreases the weights
+        # Increases the weights and bias for the correct class and decreases the weights
         # for the incorrectly predicted class.
         self.weights[y_true_index] += self.learning_rate * x
         self.weights[y_pred_index] -= self.learning_rate * x
+
+        self.bias[y_true_index] += self.learning_rate
+        self.bias[y_pred_index] -= self.learning_rate

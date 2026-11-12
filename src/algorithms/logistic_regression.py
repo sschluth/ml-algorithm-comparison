@@ -17,19 +17,22 @@ class Logistic_Regression:
         num_of_classes: Number of unique classes in the training data.
         learning_rate: Step size used during gradient descent.
         epoch: Number of training iterations.
+        lambda_reg: Strength of L2 regularization.
         weights: Model weights learned during training.
         bias: Model bias learned during training.
     """
-    def __init__(self, learning_rate: float, epochs: int):
+    def __init__(self, learning_rate: float, epochs: int, lambda_reg: float = 0.01):
         """
         Initializes the Logistic Regression classifier.
         
         Args:
             learning_rate: Controls the magnitude of the weight and bias updates.
             epoch: Number of training iterations.
+            lambda_reg: Strength of L2 regularization. Defaults to 0.01.
         """
         self.learning_rate = learning_rate
         self.epochs = epochs
+        self.lambda_reg = lambda_reg
         self.X_train = None
         self.y_train = None
         self.num_of_classes = None
@@ -93,13 +96,16 @@ class Logistic_Regression:
 
         # Converts class labels into one-hot encoded vectors
         y_train_one_hot = np.eye(self.num_of_classes)[self.y_train]
+
         
         for _ in range(self.epochs):
             z = np.dot(self.X_train, self.weights.T) + self.bias
             y_pred = self._softmax(z)
 
             # Calculates the gradients of the weights and bias using cross-entropy loss.
-            derivative_weights = (1/len(y_train_one_hot)) * np.dot((y_pred - y_train_one_hot).T, self.X_train)
+            derivative_weights = (
+                (1/len(y_train_one_hot)) * np.dot((y_pred - y_train_one_hot).T, self.X_train)
+                + (self.lambda_reg / len(y_train_one_hot)) * self.weights)
             derivative_bias = (1/len(y_train_one_hot)) * np.sum(y_pred - y_train_one_hot, axis=0)
 
             self.weights -= self.learning_rate * derivative_weights
@@ -116,11 +122,14 @@ class Logistic_Regression:
             y_pred = self._sigmoid(z)
 
             # Calculates the gradients of the weights and bias using binary cross-entropy loss.
-            derivative_weights = (1/len(self.y_train)) * np.dot((y_pred - self.y_train), self.X_train)
+            derivative_weights = (
+                (1/len(self.y_train)) * np.dot((y_pred - self.y_train), self.X_train)
+                + (self.lambda_reg / len(self.y_train)) * self.weights)
             derivative_bias = (1/len(self.y_train)) * np.sum(y_pred - self.y_train)
 
             self.weights -= self.learning_rate * derivative_weights
             self.bias -= self.learning_rate * derivative_bias
+
 
     def _sigmoid(self, z: np.ndarray) -> np.ndarray:
         """
@@ -133,6 +142,7 @@ class Logistic_Regression:
             NumPy array containing the sigmoid probabilities.
         """
         return 1/(1 + np.exp(-z))
+
 
     def _softmax(self, z: np.ndarray) -> np.ndarray:
         """

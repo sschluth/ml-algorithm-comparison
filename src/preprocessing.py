@@ -1,35 +1,75 @@
 import pandas as pd
 import numpy as np
 
-def load_data(dataset: str, y_col:int, x_cols:list, header:int | None = None) -> tuple[np.ndarray, np.ndarray]:
+
+def load_data(dataset: str, y_col: str | int, x_cols: list[str | int],
+              header: int | None = None) -> tuple[np.ndarray, np.ndarray]:
     """
-    Loads a dataset and separates its features (X) and labels (y).
+    Loads a dataset, preprocesses categorical features when applicable,
+    encodes labels, and separates the features (X) from the labels (y).
 
     Assumptions:
         - The dataset is a properly formatted CSV file.
-        - The specified feature and label columns exist in the dataset.
+        - The specified feature and label columns exist.
         - The dataset contains no missing or invalid values.
-        - The label column contains categorical values.
-    
+        - Student Performance grade values range from 0 to 20.
+        - Student Performance categorical values match the defined mappings.
+        - Non-Student Performance datasets must have numerical feature columns.
+
     Args:
-        dataset: Path to CSV file.
-        y_col: Column index for the labels.
-        x_cols: List of column indices for the features.
-        header: Row index containing column names, or None if the dataset has no header
+        dataset: Path to the CSV file.
+        y_col: Column name or index for the labels.
+        x_cols: List of column names or indices for the features.
+        header: Row index containing column names, or None if the
+                dataset has no header.
 
     Returns:
-        X: NumPy array containing the data points and their features
-        y: NumPy array containing the corresponding labels
+        X: NumPy array containing the numerical features.
+        y: NumPy array containing the encoded labels.
     """
+    df = pd.read_csv(dataset, sep=None, header=header)
 
-    df = pd.read_csv(dataset, header=header)
+    y = df[y_col]
 
-    y = df.iloc[:, y_col]
-    unique_y_values = y.unique()
-    for i in range(len(unique_y_values)):
-        y = y.replace(unique_y_values[i], i)
+    if y_col == "G3":
+        # Group final grades into four categories
+        y = pd.cut(y, bins=[-1, 9, 13, 16, 20], labels=[0, 1, 2, 3])
 
-    X = df.iloc[:, x_cols].to_numpy()
+        # Encode binary categorical features
+        binary_mappings = {
+            "school": {"GP": 0, "MS": 1},
+            "sex": {"F": 0, "M": 1},
+            "address": {"U": 0, "R": 1},
+            "famsize": {"LE3": 0, "GT3": 1},
+            "Pstatus": {"T": 0, "A": 1},
+            "schoolsup": {"no": 0, "yes": 1},
+            "famsup": {"no": 0, "yes": 1},
+            "paid": {"no": 0, "yes": 1},
+            "activities": {"no": 0, "yes": 1},
+            "nursery": {"no": 0, "yes": 1},
+            "higher": {"no": 0, "yes": 1},
+            "internet": {"no": 0, "yes": 1},
+            "romantic": {"no": 0, "yes": 1}
+        }
+
+        for col, mapping in binary_mappings.items():
+            if col in x_cols:
+                df[col] = df[col].map(mapping)
+
+        # One-hot encode nominal categorical features
+        categorical_cols = ["Mjob", "Fjob", "reason", "guardian"]
+        categorical_cols = [col for col in categorical_cols if col in x_cols]
+
+        X = pd.get_dummies(df[x_cols], columns=categorical_cols, dtype=int).to_numpy()
+
+    else:
+        # Encode categorical labels
+        unique_y_values = y.unique()
+        label_mapping = {label: i for i, label in enumerate(unique_y_values)}
+        y = y.map(label_mapping)
+
+        X = df[x_cols].to_numpy()
+
     y = y.to_numpy(dtype=int)
 
     return X, y
@@ -37,7 +77,7 @@ def load_data(dataset: str, y_col:int, x_cols:list, header:int | None = None) ->
     
 def split_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Splits into 80% training data and 20% testing data using a random split
+    Splits the dataset into 80% training data and 20% testing data using a reproducible random split.
 
     Assumptions:
         - X and y contain the same number of samples.
@@ -47,11 +87,11 @@ def split_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np
         X: NumPy array of features to be split.
         y: NumPy array of corresponding labels to be split.
 
-    Returns:
-        X_train: NumPy array containing the features used to train the model.
-        y_train: NumPy array containing the expected labels corresponding to the training features.
-        X_test: NumPy array containing the unseen testing features.
-        y_test: NumPy array containing the corresponding labels of the unseen testing features.
+Returns:
+        X_train: Features used to train the models.
+        y_train: Corresponding training labels.
+        X_test: Features reserved for testing.
+        y_test: Corresponding testing labels.
     """
     indices = np.arange(len(X))
     np.random.seed(15)

@@ -1,18 +1,34 @@
+
+# ==================================================
+# Imports
+# ==================================================
+
 import preprocessing
 import evaluation
+import visualization
+
 import algorithms.knn as knn
 import algorithms.logistic_regression as logistic_regression
 import algorithms.perceptron as perceptron
+
+import matplotlib.pyplot as plt
+
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression, Perceptron
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-def print_results(model_name: str, results: dict, num_folds: int):
-    """
-    Prints the cross-validation results for a classification model.
 
-    Displays the accuracy, precision, recall, and F1-score for each fold
-    and their averages, along with the combined confusion matrix.
+# ==================================================
+# Result Display
+# ==================================================
+
+def print_results(model_name: str, results: dict, num_folds: int = 1) -> None:
+    """
+    Prints the evaluation results for a classification model.
+
+    Displays accuracy, precision, recall, and F1-score for each
+    fold and their averages, or the test set results, along with
+    the combined confusion matrix.
 
     Args:
         model_name: Name of the model being evaluated.
@@ -24,9 +40,14 @@ def print_results(model_name: str, results: dict, num_folds: int):
     print(f"{'=' * 50}")
 
     print(f"{'Metric':<15}", end="")
-    for i in range(1, num_folds + 1):
-        print(f"{'Fold ' + str(i):>8}", end="")
-    print(f"{'Average':>10}")
+
+    if num_folds > 1:
+        for i in range(1, num_folds + 1):
+            print(f"{'Fold ' + str(i):>8}", end="")
+        print(f"{'Average':>10}")
+    else:
+        print(f"{'Test Set':>8}")
+        print()
 
     print("-" * 65)
 
@@ -43,112 +64,171 @@ def print_results(model_name: str, results: dict, num_folds: int):
     print(results["confusion_matrix"])
 
 
+# ==================================================
+# Main Experiment
+# ==================================================
+
 def main():
     """
     Runs the machine learning experiments.
 
-    Loads and splits the dataset, configures the custom and scikit-learn
-    models, evaluates each model using stratified K-fold cross-validation,
-    and prints the resulting evaluation metrics.
+    Loads and splits the dataset, configures custom and scikit-learn
+    models, evaluates each model, and visualizes the resulting metrics.
     """
 
-    # Experiment settings
-    num_folds = 5
-    knn_k = 5
-    learning_rate = 0.05
-    epochs = 5
+    # --------------------------------------------------
+    # Experiment Settings
+    # --------------------------------------------------
 
-    # Configure feature scalers for each algorithm
-    custom_knn_scaler = preprocessing.CustomMinMaxScaler
-    sklearn_knn_scaler = MinMaxScaler
+    num_folds = 10
 
-    custom_log_reg_scaler = preprocessing.CustomStandardScaler
-    sklearn_log_reg_scaler = StandardScaler
+    # Scalers
+    custom_standard_scaler = preprocessing.CustomStandardScaler
+    custom_minmax_scaler = preprocessing.CustomMinMaxScaler
 
-    custom_perceptron_scaler = preprocessing.CustomStandardScaler
-    sklearn_perceptron_scaler = StandardScaler
+    sklearn_standard_scaler = StandardScaler
+    sklearn_minmax_scaler = MinMaxScaler
 
-    # Configure model hyperparameters
-    custom_knn_params = {"k": knn_k}
-    sklearn_knn_params = {"n_neighbors": knn_k}
+    # --------------------------------------------------
+    # Model Hyperparameters
+    # --------------------------------------------------
 
-    custom_log_reg_params = {"learning_rate": learning_rate, "epochs": epochs}
-    sklearn_log_reg_params = {"max_iter": 1000}
+    custom_knn_params = {"k": 7}
+    sklearn_knn_params = {"n_neighbors": 7}
 
-    custom_perceptron_params = {"learning_rate": learning_rate, "epochs": epochs}
-    sklearn_perceptron_params = {"eta0": learning_rate, "max_iter": epochs}
+    custom_log_reg_params = {
+        "learning_rate": 0.8,
+        "epochs": 100,
+        "lambda_reg": 0.01
+    }
+    sklearn_log_reg_params = {"max_iter": 100}
 
-    # Load the dataset and create training and testing sets
-    X, y = preprocessing.load_data("data/breast_cancer_wisconsin_diagnostic/wdbc.data", 1, list(range(2, 32)))
-    
+    custom_perceptron_params = {
+        "learning_rate": 0.1,
+        "epochs": 100
+    }
+    sklearn_perceptron_params = {
+        "eta0": 0.1,
+        "max_iter": 100,
+        "random_state": 15
+    }
+
+    # ------------------------------- # Model Configurations
+    # --------------------------------------------------
+
+    models = [
+        ("Custom KNN", knn.KNN, custom_knn_params, custom_standard_scaler),
+        ("Sklearn KNN", KNeighborsClassifier, sklearn_knn_params, sklearn_standard_scaler),
+
+        ("Custom Logistic Regression", logistic_regression.Logistic_Regression,
+         custom_log_reg_params, custom_standard_scaler),
+        ("Sklearn Logistic Regression", LogisticRegression,
+         sklearn_log_reg_params, sklearn_standard_scaler),
+
+        ("Custom Perceptron", perceptron.Perceptron,
+         custom_perceptron_params, custom_standard_scaler),
+        ("Sklearn Perceptron", Perceptron,
+         sklearn_perceptron_params, sklearn_standard_scaler)
+    ]
+
+    # --------------------------------------------------
+    # Dataset Loading
+    # --------------------------------------------------
+
+    # Student Performance Dataset
+    x_cols = [
+        "school", "sex", "age", "address", "famsize", "Pstatus",
+        "Medu", "Fedu", "Mjob", "Fjob", "reason", "guardian",
+        "traveltime", "studytime", "failures", "schoolsup", "famsup",
+        "paid", "activities", "nursery", "higher", "internet",
+        "romantic", "famrel", "freetime", "goout", "Dalc", "Walc",
+        "health", "absences", "G1", "G2"
+    ]
+
+    X, y = preprocessing.load_data(
+        dataset="data/student_performance/student-mat.csv",
+        y_col="G3",
+        x_cols=x_cols,
+        header=0
+    )
+
+    # Breast Cancer Wisconsin Diagnostic Dataset
+    # X, y = preprocessing.load_data(
+    #     dataset="data/breast_cancer_wisconsin_diagnostic/wdbc.data",
+    #     y_col=1,
+    #     x_cols=list(range(2, 32))
+    # )
+
+    # --------------------------------------------------
+    # Train/Test Split
+    # --------------------------------------------------
+
     X_train, y_train, X_test, y_test = preprocessing.split_data(X, y)
 
-    # Evaluate custom and scikit-learn KNN implementations
-    custom_knn_results = evaluation.cross_validation(
-        X_train=X_train,
-        y_train=y_train,
-        num_folds=num_folds,
-        algorithm=knn.KNN,
-        model_params=custom_knn_params,
-        scaler_class=custom_knn_scaler
-    )
+    # --------------------------------------------------
+    # Cross-Validation
+    # --------------------------------------------------
 
-    sklearn_knn_results = evaluation.cross_validation(
-        X_train=X_train,
-        y_train=y_train,
-        num_folds=num_folds,
-        algorithm=KNeighborsClassifier,
-        model_params=sklearn_knn_params,
-        scaler_class=sklearn_knn_scaler
-    )
+    # print("\nCROSS-VALIDATION RESULTS")
+    # cv_results = {}
 
-    # Evaluate custom and scikit-learn Logistic Regression implementations
-    custom_log_reg_results = evaluation.cross_validation(
-        X_train=X_train,
-        y_train=y_train,
-        num_folds=num_folds,
-        algorithm=logistic_regression.Logistic_Regression,
-        model_params=custom_log_reg_params,
-        scaler_class=custom_log_reg_scaler
-    )
+    # for name, algorithm, params, scaler in models:
+    #     results = evaluation.cross_validation(
+    #         X_train=X_train,
+    #         y_train=y_train,
+    #         num_folds=num_folds,
+    #         algorithm=algorithm,
+    #         model_params=params,
+    #         scaler_class=scaler
+    #     )
+    #
+    #     cv_results[name] = results
+    #     print_results(name, results, num_folds)
 
-    sklearn_log_reg_results = evaluation.cross_validation(
-        X_train=X_train,
-        y_train=y_train,
-        num_folds=num_folds,
-        algorithm=LogisticRegression,
-        model_params=sklearn_log_reg_params,
-        scaler_class=sklearn_log_reg_scaler
-    )
+    # --------------------------------------------------
+    # Held-Out Test Set Evaluation
+    # --------------------------------------------------
 
-    # Evaluate custom and scikit-learn Perceptron implementations
-    custom_perceptron_results = evaluation.cross_validation(
-        X_train=X_train,
-        y_train=y_train,
-        num_folds=num_folds,
-        algorithm=perceptron.Perceptron,
-        model_params=custom_perceptron_params,
-        scaler_class=custom_perceptron_scaler
-    )
+    print("\nTEST SET RESULTS")
 
-    sklearn_perceptron_results = evaluation.cross_validation(
-        X_train=X_train,
-        y_train=y_train,
-        num_folds=num_folds,
-        algorithm=Perceptron,
-        model_params=sklearn_perceptron_params,
-        scaler_class=sklearn_perceptron_scaler
-    )
+    test_results = {}
 
-    # Print evaluation results for all models
-    print_results("Custom KNN", custom_knn_results, num_folds)
-    print_results("Sklearn KNN", sklearn_knn_results, num_folds)
+    for name, algorithm, params, scaler in models:
+        results = evaluation.evaluate_test(
+            X_test=X_test,
+            X_train=X_train,
+            y_test=y_test,
+            y_train=y_train,
+            algorithm=algorithm,
+            model_params=params,
+            scaler_class=scaler
+        )
 
-    print_results("Custom Logistic Regression", custom_log_reg_results, num_folds)
-    print_results("Sklearn Logistic Regression", sklearn_log_reg_results, num_folds)
+        test_results[name] = results
+        print_results(name, results)
 
-    print_results("Custom Perceptron", custom_perceptron_results, num_folds)
-    print_results("Sklearn Perceptron", sklearn_perceptron_results, num_folds)
+    # --------------------------------------------------
+    # Visualization
+    # --------------------------------------------------
+
+    plots = [
+        ("KNN", custom_knn_params, "Custom KNN", "Sklearn KNN"),
+        ("Logistic Regression", custom_log_reg_params,
+         "Custom Logistic Regression", "Sklearn Logistic Regression"),
+        ("Perceptron", custom_perceptron_params,
+         "Custom Perceptron", "Sklearn Perceptron")
+    ]
+
+    for name, params, custom_name, sklearn_name in plots:
+        visualization.create_plot(
+            name,
+            "student_performance",
+            params,
+            test_results[custom_name],
+            test_results[sklearn_name]
+        )
+
+    plt.show()
 
 
 if __name__ == "__main__":
