@@ -93,23 +93,23 @@ def main():
     # Model Hyperparameters
     # --------------------------------------------------
 
-    custom_knn_params = {"k": 7}
-    sklearn_knn_params = {"n_neighbors": 7}
+    custom_knn_params = {"k": 5}
+    sklearn_knn_params = {"n_neighbors": 5}
 
     custom_log_reg_params = {
-        "learning_rate": 0.8,
-        "epochs": 100,
+        "learning_rate": 0.5,
+        "epochs": 50,
         "lambda_reg": 0.01
     }
-    sklearn_log_reg_params = {"max_iter": 100}
+    sklearn_log_reg_params = {"max_iter": 50}
 
     custom_perceptron_params = {
-        "learning_rate": 0.1,
-        "epochs": 100
+        "learning_rate": 0.01,
+        "epochs": 50
     }
     sklearn_perceptron_params = {
-        "eta0": 0.1,
-        "max_iter": 100,
+        "eta0": 0.01,
+        "max_iter": 50,
         "random_state": 15
     }
 
@@ -117,8 +117,8 @@ def main():
     # --------------------------------------------------
 
     models = [
-        ("Custom KNN", knn.KNN, custom_knn_params, custom_standard_scaler),
-        ("Sklearn KNN", KNeighborsClassifier, sklearn_knn_params, sklearn_standard_scaler),
+        ("Custom KNN", knn.KNN, custom_knn_params, custom_minmax_scaler),
+        ("Sklearn KNN", KNeighborsClassifier, sklearn_knn_params, sklearn_minmax_scaler),
 
         ("Custom Logistic Regression", logistic_regression.Logistic_Regression,
          custom_log_reg_params, custom_standard_scaler),
@@ -145,19 +145,19 @@ def main():
         "health", "absences", "G1", "G2"
     ]
 
-    X, y = preprocessing.load_data(
-        dataset="data/student_performance/student-mat.csv",
-        y_col="G3",
-        x_cols=x_cols,
-        header=0
-    )
+    # X, y = preprocessing.load_data(
+    #     dataset="data/student_performance/student-mat.csv",
+    #     y_col="G3",
+    #     x_cols=x_cols,
+    #     header=0
+    # )
 
     # Breast Cancer Wisconsin Diagnostic Dataset
-    # X, y = preprocessing.load_data(
-    #     dataset="data/breast_cancer_wisconsin_diagnostic/wdbc.data",
-    #     y_col=1,
-    #     x_cols=list(range(2, 32))
-    # )
+    X, y = preprocessing.load_data(
+        dataset="data/breast_cancer_wisconsin_diagnostic/wdbc.data",
+        y_col=1,
+        x_cols=list(range(2, 32))
+    )
 
     # --------------------------------------------------
     # Train/Test Split
